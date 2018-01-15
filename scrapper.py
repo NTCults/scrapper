@@ -20,13 +20,13 @@ def save_to_csv(data_array):
         for item in data_array:
             writer.writerow(item)
 
-def check_location(page_obj):
+def location_exists(page_obj):
     loc = page_obj.xpath('//*[@id="page"]/section/div[2]/div/div/div[2]/div/div[1]/div[2]/ul/li[1]/a/span[1]/img')
     if not loc:
         return False
     return True
 
-def get_json_data(data):
+def decode_json_data(data):
     data = data.content
     data = data.decode('utf-8')
     data = json.loads(data)
@@ -36,7 +36,6 @@ def get_additional_data():
     res_array = []
     ready = False
     index = 2
-
     while (not ready):
         data = {
             'action': 'ico_show_more',
@@ -45,10 +44,7 @@ def get_additional_data():
         index += 1
 
         d = requests.post('https://icosource.io/wp-admin/admin-ajax.php', data)
-        data = get_json_data(d)
-        # data = d.content
-        # data = data.decode('utf-8')
-        # data = json.loads(data)
+        data = decode_json_data(d)
 
         current = html.fromstring(data['html']['current'])
         current = current.xpath('//*[@class="lp-grid-box-description "]')
@@ -72,8 +68,9 @@ def get_additional_data():
 def prepare_additional_data(page):
     res_array = []
     for el in page:
-        source = el[0][0][0].attrib['href']
-        date = el[0][1][0].text
+        # source = el[0][0][0].attrib['href']
+        source = el.find('.//h4/a').attrib['href']
+        date = el.find('.//li[@class="middle"]').text
         data_row = get_ico_page_data(source)
         data_row['date'] = date
         data_row['url_source'] = source
@@ -95,18 +92,19 @@ def get_ico_page_data(url_source):
     developer = get_link(ico_data, dev_xpath)
 
     site_xpath = ('//*[@id="page"]/section/div[2]/div/div/div[2]/div/div[1]/div[2]/ul/li[2]/a'
-        if check_location(ico_data) else '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div/div/ul/li[1]/a')
+        if location_exists(ico_data) else '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div/div/ul/li[1]/a')
     site = get_link(ico_data, site_xpath)
 
     whitepaper_link_xpath = ('//*[@id="page"]/section/div[2]/div/div/div[2]/div/div[1]/div[2]/ul/li[3]/a' 
-        if check_location(ico_data) else '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div/div/ul/li[2]/a')
+        if location_exists(ico_data) else '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div/div/ul/li[2]/a')
     whitepaper_link = get_link(ico_data, whitepaper_link_xpath)
 
     return {
         'name': name,
         'descr': descr,
         'developer':developer,
-        'site': site
+        'site': site,
+        'whitepaper_link': whitepaper_link
     } 
 
 
@@ -116,12 +114,10 @@ if __name__ == '__main__':
     data = html.fromstring(res.content)
 
     container_elements = data.xpath('//*[@class="col-md-12 lp-grid-box-contianer list_view card1 lp-grid-box-contianer1 "]')
-
     for el in container_elements:
         # main page data
         url_source = el.attrib['data-posturl']
-        name = el[0][1][0][0][0].text
-        date = el[0][1][0][1][0].text
+        date = el.find('.//li[@class="middle"]').text
 
         data_row = get_ico_page_data(url_source)
 
@@ -134,7 +130,7 @@ if __name__ == '__main__':
     print('Processing additional data.')
 
     additional_data = get_additional_data()
-    
+
     result_array += additional_data
     print(len(result_array))
     save_to_csv(result_array)
