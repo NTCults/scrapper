@@ -39,29 +39,33 @@ def get_paginated_nodes(data, key):
     nodes = parse_paginated_nodes(nodes)
     return nodes
 
+def get_data_by_index(index):
+    res_array = []
+    data = {
+        'action': 'ico_show_more',
+        'ico_paged': index
+    }
+    response = requests.post(PAGINATOR_URL, data)
+    data = decode_json_data(response)
+
+    current = get_paginated_nodes(data, 'current')
+    res_array += current
+
+    upcoming = get_paginated_nodes(data, 'upcoming')
+    res_array += upcoming
+
+    return res_array
+
 def get_paginated_data():
     res_array = []
     ready = False
     index = 1
     while (not ready):
-        data = {
-            'action': 'ico_show_more',
-            'ico_paged': index
-        }
+        data = get_data_by_index(index)
+        res_array += data
         index += 1
-
-        response = requests.post(PAGINATOR_URL, data)
-        data = decode_json_data(response)
-
-        current = get_paginated_nodes(data, 'current')
-        res_array += current
-
-        upcoming = get_paginated_nodes(data, 'upcoming')
-        res_array += upcoming
-
-        if (not current) and (not upcoming):
+        if not data:
             ready = True
-
     return res_array
 
 
