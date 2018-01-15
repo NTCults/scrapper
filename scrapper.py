@@ -3,8 +3,9 @@ import json
 import csv
 from lxml import html
 
+FILENAME = 'ico_table.csv'
 URL = 'https://icosource.io'
-
+PAGINATOR_URL = 'https://icosource.io/wp-admin/admin-ajax.php'
 
 def get_link(page_obj, xpath_expr):
     elements = page_obj.xpath(xpath_expr)
@@ -12,8 +13,8 @@ def get_link(page_obj, xpath_expr):
         return elements[0].attrib['href']
     return None
 
-def save_to_csv(data_array):
-    with open('ico_table.csv', 'w', newline='') as csvfile:
+def save_to_csv(data_array, filename):
+    with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url_source', 'name', 'date', 'descr', 'developer', 'site', 'whitepaper_link']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -32,7 +33,13 @@ def decode_json_data(data):
     data = json.loads(data)
     return data
 
-def get_additional_data():
+def get_paginated_nodes(data, key):
+    page = html.fromstring(data['html'][key])
+    nodes = page.xpath('//*[@class="lp-grid-box-description "]')
+    nodes = parse_paginated_nodes(nodes)
+    return nodes
+
+def get_paginated_data():
     res_array = []
     ready = False
     index = 2
@@ -43,20 +50,13 @@ def get_additional_data():
         }
         index += 1
 
-        d = requests.post('https://icosource.io/wp-admin/admin-ajax.php', data)
-        data = decode_json_data(d)
+        response = requests.post(PAGINATOR_URL, data)
+        data = decode_json_data(response)
 
-        current = html.fromstring(data['html']['current'])
-        current = current.xpath('//*[@class="lp-grid-box-description "]')
-        if current:
-            current = prepare_additional_data(current)
-
-        upcoming = html.fromstring(data['html']['upcoming'])
-        upcoming = upcoming.xpath('//*[@class="lp-grid-box-description "]')
-        if upcoming:
-            upcoming = prepare_additional_data(upcoming)
-
+        current = get_paginated_nodes(data, 'current')
         res_array += current
+
+        upcoming = get_paginated_nodes(data, 'upcoming')
         res_array += upcoming
 
         if (not current) and (not upcoming):
@@ -65,12 +65,12 @@ def get_additional_data():
     return res_array
 
 
-def prepare_additional_data(page):
+def parse_paginated_nodes(page):
     res_array = []
     for el in page:
-        # source = el[0][0][0].attrib['href']
         source = el.find('.//h4/a').attrib['href']
         date = el.find('.//li[@class="middle"]').text
+
         data_row = get_ico_page_data(source)
         data_row['date'] = date
         data_row['url_source'] = source
@@ -129,8 +129,8 @@ if __name__ == '__main__':
     print('*' * 80)
     print('Processing additional data.')
 
-    additional_data = get_additional_data()
+    paginated_data = get_paginated_data()
 
-    result_array += additional_data
-    print(len(result_array))
-    save_to_csv(result_array)
+    result_array += paginated_data
+    print('Number of rows: ', len(result_array))
+    save_to_csv(result_array, FILENAME)
