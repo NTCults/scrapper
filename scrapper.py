@@ -42,7 +42,7 @@ def get_paginated_nodes(data, key):
 def get_paginated_data():
     res_array = []
     ready = False
-    index = 2
+    index = 1
     while (not ready):
         data = {
             'action': 'ico_show_more',
