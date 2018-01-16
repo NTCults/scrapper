@@ -167,7 +167,7 @@ class Scrapper:
 
         paginated_data = self.get_paginated_data()
         paginated_data = self.parse_paginated_page_ico_data(paginated_data)
-        self.process_data(self.get_ico_page_data, paginated_data)
+        paginated_data = self.process_data(self.get_ico_page_data, paginated_data)
 
         self.data = main_page_data + paginated_data
 
