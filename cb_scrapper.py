@@ -13,6 +13,7 @@ PAGINATOR_URL = 'https://icosource.io/wp-admin/admin-ajax.php'
 xpath_expressions = {
     'main_page_container_element': '//*[@class="col-md-12 lp-grid-box-contianer list_view card1 lp-grid-box-contianer1 "]',
     'location_img': '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div[1]/div[2]/ul/li[1]/a/span[1]/img',
+    'ico_page_container': '//*[@class="lp-grid-box-description "]',
     'ico_page_name': '//*[@id="details"]/div/h3/text()',
     'ico_page_description': '//*[@id="details"]/div/p[1]/text()',
     'ico_page_developer': '//*[@id="page"]/section/div[2]/div/div/div[2]/div/div/div[2]/ul/li[4]/a',
@@ -109,7 +110,7 @@ class Scrapper:
 
     def get_nodes_from_paginated_page(self, data, key):
         page = self.convert_to_lxml_tree(data['html'][key])
-        nodes = page.xpath('//*[@class="lp-grid-box-description "]')
+        nodes = page.xpath(xpath_expressions['ico_page_container'])
         return nodes
 
     def get_data_by_index(self, index):
