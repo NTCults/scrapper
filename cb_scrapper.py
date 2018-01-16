@@ -3,6 +3,8 @@ import json
 import csv
 from lxml import html
 import re
+from multiprocessing.dummy import Pool as ThreadPool
+
 
 FILENAME = 'cb_ico_table.csv'
 URL = 'https://icosource.io'
@@ -129,14 +131,13 @@ class Scrapper:
 
     def get_paginated_data(self):
         res_array = []
-        ready = False
         index = 1
-        while (not ready):
+        while True:
             data = self.get_data_by_index(index)
             res_array += data
             index += 1
             if not data:
-                ready = True
+                break
         return res_array
 
     def parse_paginated_page_ico_data(self, page):
@@ -149,26 +150,30 @@ class Scrapper:
                 'url_source': source,
                 'date': re.sub(r"[\n\t\r]*", "", date)
             })
-        return res_array  
+        return res_array
 
-    def get_data(self):
+    def process_data(self, callback, arr):
+        pool = ThreadPool(8)
+        data = pool.map(callback, arr)
+        pool.close()
+        pool.join()
+        return data
+
+    def load_data(self):
         main_page_data = self.fetch_content(URL)
-        res = self.parse_main_page_ico_data(main_page_data)
-
-        for i in res:
-            self.get_ico_page_data(i)
+        main_page_data = self.parse_main_page_ico_data(main_page_data)
+        main_page_data = self.process_data(self.get_ico_page_data, main_page_data)
 
         paginated_data = self.get_paginated_data()
-        res2 = self.parse_paginated_page_ico_data(paginated_data)
-        for i in res2:
-            self.get_ico_page_data(i)
+        paginated_data = self.parse_paginated_page_ico_data(paginated_data)
+        self.process_data(self.get_ico_page_data, paginated_data)
 
-        self.data = res + res2
+        self.data = main_page_data + paginated_data
 
     def save_data_to_file(self):
         self.save_to_csv(self.data, FILENAME)
 
 if __name__ == '__main__':
     scrapper = Scrapper()
-    scrapper.get_data()
+    scrapper.load_data()
     scrapper.save_data_to_file()
